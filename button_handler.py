@@ -8,11 +8,12 @@ import os
 import time
 import threading
 
+import calls
 from gpiozero import LED, Button
 
 led = LED(4)
 callButton = Button(26)
-endButton = Button(17)
+resetButton = Button(17)
 
 class ButtonHandler(threading.Thread):
     '''
@@ -61,6 +62,7 @@ def onConfChange(button):
 
 def onConfPress(button):
     print("Starting group call")
+    calls.CallAll()
     # Call initiated, press again to end
     callButton.when_pressed = hangup
     # If held callback is currently set to hang up, change it back to PTT callback for next hold
@@ -80,6 +82,7 @@ def onConfRelease(button):
 
 def hangup(arg):
     print("Hanging up")
+    calls.Hangup()
     led.off()
     # Reset press/release callbacks
     callButton.when_pressed = debounceCall
@@ -87,8 +90,9 @@ def hangup(arg):
     # Prevent "onConfHeld" callback from starting PTT (will reset on next press)
     callButton.when_held = None
 
-def empty(arg):
-    print("called empty")
+def reset(arg):
+    print("Called reset")
+    calls.Reset()
 
 # Debounce invocations of onConfChange
 debounceCall = ButtonHandler(callButton, onConfChange, edge='both')
@@ -100,7 +104,7 @@ callButton.hold_time = 1
 callButton.when_held = onConfHeld
 
 # Number of times pressed and length of time pressed don't matter here
-endButton.when_pressed = hangup
+resetButton.when_pressed = reset
 
 # TODO: see if there's a better way to keep this running
 while True:
