@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 '''
 Single button controls call functionality. Short press opens
 all-way communications for hands-free mode. Next press closes the line.
@@ -9,11 +10,13 @@ import time
 import threading
 
 import calls
+import jamid
 from gpiozero import LED, Button
 
 led = LED(4)
 callButton = Button(26)
 resetButton = Button(17)
+intercom = {}
 
 class ButtonHandler(threading.Thread):
     '''
@@ -62,7 +65,7 @@ def onConfChange(button):
 
 def onConfPress(button):
     print("Starting group call")
-    calls.CallAll()
+    intercom.call_all()
     # Call initiated, press again to end
     callButton.when_pressed = hangup
     # If held callback is currently set to hang up, change it back to PTT callback for next hold
@@ -82,7 +85,7 @@ def onConfRelease(button):
 
 def hangup(arg):
     print("Hanging up")
-    calls.Hangup()
+    intercom.hangup()
     led.off()
     # Reset press/release callbacks
     callButton.when_pressed = debounceCall
@@ -92,20 +95,26 @@ def hangup(arg):
 
 def reset(arg):
     print("Called reset")
-    calls.Reset()
+    jamid.reset()
 
-# Debounce invocations of onConfChange
-debounceCall = ButtonHandler(callButton, onConfChange, edge='both')
-callButton.when_pressed = debounceCall
-callButton.when_released = debounceCall
+if __name__ == "__main__":
+    if not jamid.is_daemon_running():
+        jamid.start_daemon(debug=True)
+        time.sleep(3)
 
-callButton.hold_time = 1
-# Already debounced based on hold_time
-callButton.when_held = onConfHeld
+    # Debounce invocations of onConfChange
+    intercom = calls.Intercom()
+    debounceCall = ButtonHandler(callButton, onConfChange, edge='both')
+    callButton.when_pressed = debounceCall
+    callButton.when_released = debounceCall
 
-# Number of times pressed and length of time pressed don't matter here
-resetButton.when_pressed = reset
+    callButton.hold_time = 1
+    # Already debounced based on hold_time
+    callButton.when_held = onConfHeld
 
-# TODO: see if there's a better way to keep this running
-while True:
-    time.sleep(1)
+    # Number of times pressed and length of time pressed don't matter here
+    resetButton.when_pressed = reset
+
+    # TODO: see if there's a better way to keep this running
+    while True:
+        time.sleep(1)
