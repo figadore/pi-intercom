@@ -16,7 +16,8 @@ station_defs = [
     {
         "display_name": "faith-desk",
         "device_type": "RPI4",
-        "led_pin": "4",
+        "led_pin1": "27",
+        "led_pin2": "4",
         "ip": "192.168.0.201",
         "username": "cypress201",
         "sip_domain": "sip.linphone.org",
@@ -29,6 +30,15 @@ station_defs = [
         "sip_domain": "sip.linphone.org",
     },
     {
+        "display_name": "reese-pc",
+        "device_type": "Windows",
+        "ip": "192.168.0.21",
+        "username": "figadore",
+        "led_pin1": "10",
+        "led_pin2": "22",
+        "sip_domain": "sip.linphone.org",
+    },
+    {
         "display_name": "reese-phone",
         "device_type": "Android",
         "username": "reese-pixel",
@@ -37,13 +47,15 @@ station_defs = [
 ]
 
 class Intercom(DRingCtrl):
-    def __init__(self):
+    def __init__(self, button_handler):
         print("Intercom init")
         name = 'pi-intercom'
         autoanswer = True
         super().__init__(name, autoanswer)
         sleeptime = 1
         self.stations = self.init_stations(station_defs)
+        self.active_call_count = 0
+        self.button_handler = button_handler
 
     def init_stations(self, station_defs):
         stations_list = []
@@ -54,7 +66,8 @@ class Intercom(DRingCtrl):
                 username=station_def["username"],
                 ip=station_def.get("ip"),
                 sip_domain=station_def["sip_domain"],
-                led_pin=station_def.get("led_pin", None)
+                led_pin1=station_def.get("led_pin1", None),
+                led_pin2=station_def.get("led_pin2", None)
             )
             stations_list.append(station)
         return stations_list
@@ -92,6 +105,13 @@ class Intercom(DRingCtrl):
         if station is None:
             print(f"Uh oh, station for {call_id} not found")
         station.set_call_status(state)
+        if state == "CONNECTING":
+            self.active_call_count = self.active_call_count + 1
+        if state == "OVER":
+            self.active_call_count = self.active_call_count - 1
+            if self.active_call_count == 0:
+                # hangup button should now be a call button
+                self.button_handler.reset_buttons()
 
     def onConferenceCreated_cb(self):
         print("onConferenceCreated_cb")
@@ -102,12 +122,15 @@ class Intercom(DRingCtrl):
         details = self.getCallDetails(call_id)
         peer_number = details["PEER_NUMBER"]
         for station in self.stations:
+            if station.get_call_id() == call_id:
+                return station
             # Example peer_number: <sip:cypress201@192.168.0.201>
             sip = f"<sip:{station.username}@{station.sip_domain}>"
             ip2ip = f"<sip:{station.username}@{station.ip}>"
             if peer_number == ip2ip or peer_number == sip:
                 print("found station")
                 print(station)
+                station.set_call_id(call_id)
                 return station
             else:
                 print(f"{peer_number} == {ip2ip} or {peer_number} == {sip}")

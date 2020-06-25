@@ -13,12 +13,8 @@ import intercom
 import jamid
 from gpiozero import LED, Button
 
-#led = LED(4)
-call_button = Button(26)
-reset_button = Button(17)
-mgr = {}
 
-class ButtonHandler(threading.Thread):
+class Debouncer(threading.Thread):
     '''
     Adapted from https://raspberrypi.stackexchange.com/a/76738
     '''
@@ -56,66 +52,73 @@ class ButtonHandler(threading.Thread):
         self.lastpinval = pinval
         self.lock.release()
 
+class Handler():
+    def on_conf_change(self, button):
+        if button.is_active:
+            self.on_conf_press(button)
+        else:
+            self.on_conf_release(button)
 
-def on_conf_change(button):
-    if button.is_active:
-        on_conf_press(button)
-    else:
-        on_conf_release(button)
+    def on_conf_press(self, button):
+        print("Starting group call")
+        mgr.call_all()
+        # Call initiated, press again to end
+        call_button.when_pressed = self.hangup_all
+        # If held callback is currently set to hang up, change it back to PTT callback for next hold
+        call_button.when_held = self.on_conf_held
+        #led.on()
 
-def on_conf_press(button):
-    print("Starting group call")
-    mgr.call_all()
-    # Call initiated, press again to end
-    call_button.when_pressed = hangup_all
-    # If held callback is currently set to hang up, change it back to PTT callback for next hold
-    call_button.when_held = on_conf_held
-    #led.on()
+    def on_conf_held(self, button):
+        # Entered PTT mode, change what happens when button released
+        print("Entered Push-to-talk, release to hangup")
+        # But first set debounce_call instance lastpinval to false when released
+        debounce_call.lastpinval = False
+        call_button.when_released = self.hangup_all
 
-def on_conf_held(button):
-    # Entered PTT mode, change what happens when button released
-    print("Entered Push-to-talk, release to hangup")
-    # But first set debounce_call instance lastpinval to false when released
-    debounce_call.lastpinval = False
-    call_button.when_released = hangup_all
+    def on_conf_release(self, button):
+        #print("release")
+        pass
 
-def on_conf_release(button):
-    #print("release")
-    pass
+    def hangup_all(self, arg):
+        print("Hanging up")
+        mgr.hangup_all()
+        self.reset_buttons()
 
-def hangup_all(arg):
-    print("Hanging up")
-    mgr.hangup_all()
-    #led.off()
-    # Reset press/release callbacks
-    call_button.when_pressed = debounce_call
-    call_button.when_released = debounce_call
-    # Prevent "on_conf_held" callback from starting PTT (will reset on next press)
-    call_button.when_held = None
+    def reset_buttons(self):
+        print("resetting buttons")
+        # Reset press/release callbacks
+        call_button.when_pressed = debounce_call
+        call_button.when_released = debounce_call
+        # Prevent "on_conf_held" callback from starting PTT (will reset on next press)
+        call_button.when_held = None
 
-def reset(arg):
-    print("Called reset")
-    jamid.reset()
-    mgr = intercom.Intercom()
+    def reset(self, arg):
+        print("Called reset")
+        jamid.reset()
+        mgr = intercom.Intercom(self)
 
 if __name__ == "__main__":
+    call_button = Button(26)
+    reset_button = Button(17)
+
     if not jamid.is_daemon_running():
         jamid.start_daemon(debug=True)
 
     # Debounce invocations of on_conf_change
-    mgr = intercom.Intercom()
+    handler = Handler()
+    mgr = intercom.Intercom(handler)
     mgr.start()
     print("intercom manager started")
-    debounce_call = ButtonHandler(call_button, on_conf_change, edge='both')
+    debounce_call = Debouncer(call_button, handler.on_conf_change, edge='both')
     call_button.when_pressed = debounce_call
     call_button.when_released = debounce_call
 
     call_button.hold_time = 1
     # Already debounced based on hold_time
-    call_button.when_held = on_conf_held
+    call_button.when_held = handler.on_conf_held
 
     # Number of times pressed and length of time pressed don't matter here
-    reset_button.when_pressed = reset
+    reset_button.when_pressed = handler.reset
 
     # TODO: see if there's a better way to keep this running
     while True:
