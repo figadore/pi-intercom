@@ -9,14 +9,14 @@ import os
 import time
 import threading
 
-import calls
+import intercom
 import jamid
 from gpiozero import LED, Button
 
-led = LED(4)
-callButton = Button(26)
-resetButton = Button(17)
-intercom = {}
+#led = LED(4)
+call_button = Button(26)
+reset_button = Button(17)
+mgr = {}
 
 class ButtonHandler(threading.Thread):
     '''
@@ -57,63 +57,65 @@ class ButtonHandler(threading.Thread):
         self.lock.release()
 
 
-def onConfChange(button):
+def on_conf_change(button):
     if button.is_active:
-        onConfPress(button)
+        on_conf_press(button)
     else:
-        onConfRelease(button)
+        on_conf_release(button)
 
-def onConfPress(button):
+def on_conf_press(button):
     print("Starting group call")
-    intercom.call_all()
+    mgr.call_all()
     # Call initiated, press again to end
-    callButton.when_pressed = hangup
+    call_button.when_pressed = hangup_all
     # If held callback is currently set to hang up, change it back to PTT callback for next hold
-    callButton.when_held = onConfHeld
-    led.on()
+    call_button.when_held = on_conf_held
+    #led.on()
 
-def onConfHeld(button):
+def on_conf_held(button):
     # Entered PTT mode, change what happens when button released
     print("Entered Push-to-talk, release to hangup")
-    # But first set debounceCall instance lastpinval to false when released
-    debounceCall.lastpinval = False
-    callButton.when_released = hangup
+    # But first set debounce_call instance lastpinval to false when released
+    debounce_call.lastpinval = False
+    call_button.when_released = hangup_all
 
-def onConfRelease(button):
+def on_conf_release(button):
     #print("release")
     pass
 
-def hangup(arg):
+def hangup_all(arg):
     print("Hanging up")
-    intercom.hangup()
-    led.off()
+    mgr.hangup_all()
+    #led.off()
     # Reset press/release callbacks
-    callButton.when_pressed = debounceCall
-    callButton.when_released = debounceCall
-    # Prevent "onConfHeld" callback from starting PTT (will reset on next press)
-    callButton.when_held = None
+    call_button.when_pressed = debounce_call
+    call_button.when_released = debounce_call
+    # Prevent "on_conf_held" callback from starting PTT (will reset on next press)
+    call_button.when_held = None
 
 def reset(arg):
     print("Called reset")
     jamid.reset()
+    mgr = intercom.Intercom()
 
 if __name__ == "__main__":
     if not jamid.is_daemon_running():
         jamid.start_daemon(debug=True)
-        time.sleep(3)
 
-    # Debounce invocations of onConfChange
-    intercom = calls.Intercom()
-    debounceCall = ButtonHandler(callButton, onConfChange, edge='both')
-    callButton.when_pressed = debounceCall
-    callButton.when_released = debounceCall
+    # Debounce invocations of on_conf_change
+    mgr = intercom.Intercom()
+    mgr.start()
+    print("intercom manager started")
+    debounce_call = ButtonHandler(call_button, on_conf_change, edge='both')
+    call_button.when_pressed = debounce_call
+    call_button.when_released = debounce_call
 
-    callButton.hold_time = 1
+    call_button.hold_time = 1
     # Already debounced based on hold_time
-    callButton.when_held = onConfHeld
+    call_button.when_held = on_conf_held
 
     # Number of times pressed and length of time pressed don't matter here
-    resetButton.when_pressed = reset
+    reset_button.when_pressed = reset
 
     # TODO: see if there's a better way to keep this running
     while True:
