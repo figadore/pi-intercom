@@ -8,6 +8,7 @@ closing the line when the button is released
 import os
 import time
 import threading
+import signal
 
 import intercom
 import jamid
@@ -106,8 +107,6 @@ if __name__ == "__main__":
 
     # Debounce invocations of on_conf_change
     handler = Handler()
-    mgr = intercom.Intercom(handler)
-    mgr.start()
     print("intercom manager started")
     debounce_call = Debouncer(call_button, handler.on_conf_change, edge='both')
     call_button.when_pressed = debounce_call
@@ -120,6 +119,8 @@ if __name__ == "__main__":
     # Number of times pressed and length of time pressed don't matter here
     reset_button.when_pressed = handler.reset
 
-    # TODO: see if there's a better way to keep this running
-    while True:
-        time.sleep(1)
+    # this prevents receiving the hangup invite for some reason
+    mgr = intercom.Intercom(handler)
+    signal.signal(signal.SIGINT, mgr.interruptHandler)
+    mgr.start()
+    print("run complete")
