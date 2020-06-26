@@ -120,6 +120,9 @@ class Intercom(DRingCtrl):
 
     def get_station(self, call_id):
         details = self.getCallDetails(call_id)
+        #for k,detail in details.items():
+        #    print(k + ": " + detail)
+
         peer_number = details["PEER_NUMBER"]
         for station in self.stations:
             if station.get_call_id() == call_id:
@@ -127,11 +130,12 @@ class Intercom(DRingCtrl):
             # Example peer_number: <sip:cypress201@192.168.0.201>
             sip = f"<sip:{station.username}@{station.sip_domain}>"
             ip2ip = f"<sip:{station.username}@{station.ip}>"
-            if peer_number == ip2ip or peer_number == sip:
+            user_at_host = f"{station.username}@{station.username}"
+            if peer_number == ip2ip or peer_number == sip or peer_number == user_at_host:
                 print("found station")
                 print(station)
                 station.set_call_id(call_id)
                 return station
             else:
-                print(f"{peer_number} == {ip2ip} or {peer_number} == {sip}")
+                print(f"failed {peer_number} != {ip2ip} or {sip} or {user_at_host}")
         return None

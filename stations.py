@@ -78,8 +78,8 @@ class Station():
     def led_on(self):
         print("led on")
         if self.led1 is not None:
-            self.led1.on()
             self.led2.off()
+            self.led1.on()
         else:
             print("led not found")
 
