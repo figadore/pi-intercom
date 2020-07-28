@@ -54,23 +54,23 @@ class ShiftRegister(SourceMixin, CompositeDevice):
         self.latch_device.off()
         self.data_device.off()
 
-register = ShiftRegister(data=4, latch=6, clock=5)
-black = Button(26)
-red = Button(19)
-while True:
-    if black.is_pressed:
-        register.on(7)
-        register.off(6)
-    else:
-        register.off(7)
-        register.on(6)
-    if red.is_pressed:
-        register.off(5)
-        register.on(4)
-    else:
-        register.on(5)
-        register.off(4)
-    time.sleep(.2)
+#register = ShiftRegister(data=4, latch=6, clock=5)
+#black = Button(26)
+#red = Button(10)
+#while True:
+#    if black.is_pressed:
+#        register.on(7)
+#        register.off(6)
+#    else:
+#        register.off(7)
+#        register.on(6)
+#    if red.is_pressed:
+#        register.on(5)
+#        register.off(4)
+#    else:
+#        register.off(5)
+#        register.on(4)
+#    time.sleep(.2)
 
 #register = ShiftRegister(data=4, latch=6, clock=5)
 ##register.on(7)
