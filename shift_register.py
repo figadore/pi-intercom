@@ -1,4 +1,5 @@
 import time
+import threading
 
 from collections import OrderedDict
 from gpiozero import CompositeDevice, SourceMixin, GPIOPinMissing, OutputDevice
@@ -6,6 +7,8 @@ from gpiozero import Button
 
 
 class ShiftRegister(SourceMixin, CompositeDevice):
+    lock = threading.Lock()
+
     def __init__(self, data=None, latch=None, clock=None, initial_value=None, bit_count=8, pin_factory=None):
         if not all(p is not None for p in [data, latch, clock]):
             raise GPIOPinMissing('data, latch, and clock pins must be provided')
@@ -31,8 +34,8 @@ class ShiftRegister(SourceMixin, CompositeDevice):
 
     @value.setter
     def value(self, value):
-        self._shift_out(value)
         self._value = value
+        self._shift_out()
 
     def on(self, bit):
         self.value |= 1 << bit
@@ -43,16 +46,18 @@ class ShiftRegister(SourceMixin, CompositeDevice):
     def toggle(self, bit):
         self.value ^= 1 << bit
 
-    def _shift_out(self, value):
-        self.latch_device.off()
-        for x in range(self.bit_count):
-            self.data_device.value = (value >> x) & 1
-            self.clock_device.off()
-            self.clock_device.on()
-            self.clock_device.off()
-        self.latch_device.on()
-        self.latch_device.off()
-        self.data_device.off()
+    def _shift_out(self):
+        value = self.value
+        with self.lock:
+            self.latch_device.off()
+            for x in range(self.bit_count):
+                self.data_device.value = (value >> x) & 1
+                self.clock_device.off()
+                self.clock_device.on()
+                self.clock_device.off()
+            self.latch_device.on()
+            self.latch_device.off()
+            self.data_device.off()
 
 #register = ShiftRegister(data=4, latch=6, clock=5)
 #black = Button(26)

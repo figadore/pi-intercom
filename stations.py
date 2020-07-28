@@ -85,7 +85,7 @@ class GpioStatus(StationStatus):
         self.yellow_led.on()
 
     def test(self):
-        self.green_led.blink(on_time=.5, off_time=.5)
+        self.green_led.blink(on_time=.1, off_time=.1)
         self.yellow_led.blink(on_time=.3, off_time=.3)
 
 
@@ -211,8 +211,8 @@ if __name__ == "__main__":
     #led1 = SipoLED(pin=41, shift_register=register)
     #led2 = SipoLED(pin=42, shift_register=register)
     #led3 = SipoLED(pin=43, shift_register=register)
-    led4 = SipoLED(pin=44, shift_register=register)
-    led5 = SipoLED(pin=45, shift_register=register)
+    #led4 = SipoLED(pin=44, shift_register=register)
+    #led5 = SipoLED(pin=45, shift_register=register)
     #led6 = SipoLED(pin=46, shift_register=register)
     #led7 = SipoLED(pin=47, shift_register=register)
     #led8 = SipoLED(pin=48, shift_register=register)
@@ -236,7 +236,10 @@ if __name__ == "__main__":
     black = gpiozero.Button(26)
     red = gpiozero.Button(10)
     #status.set_status('ringing')
-    status.set_status('test')
+    status.set_status('hold')
+    #status.set_status('test')
+    #other_status = SipoStatus(register, 45, 44)
+    #other_status.set_status('test')
     while True:
         #if black.is_pressed:
         #    #status.ringing()
@@ -244,10 +247,10 @@ if __name__ == "__main__":
         #else:
         #    #status.set_status('connected')
         #    status.set_status('ringing')
-        if red.is_pressed:
-            led5.on()
-            led4.on()
-        else:
-            led5.off()
-            led4.off()
+        #if red.is_pressed:
+        #    led5.on()
+        #    led4.on()
+        #else:
+        #    led5.off()
+        #    led4.off()
         time.sleep(.2)
