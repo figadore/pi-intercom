@@ -15,9 +15,7 @@ class StationStatus():
     def set_status(self, status):
         # Ensure same status is not set multiple times
         if status == self.status:
-            print("status was already " + status)
             return
-        print("new status: " + status)
         self.status = status
         if status == 'connecting':
             self.connecting()
@@ -33,6 +31,8 @@ class StationStatus():
             self.test()
         elif status == 'unavailable':
             self.unavailable()
+        else:
+            raise Exception("Unknown status " + status)
 
     def connecting(self):
         pass
@@ -85,8 +85,8 @@ class GpioStatus(StationStatus):
         self.yellow_led.on()
 
     def test(self):
-        self.green_led.blink(on_time=.1, off_time=.1)
-        self.yellow_led.blink(on_time=.3, off_time=.3)
+        self.green_led.blink(on_time=.3, off_time=.1)
+        self.yellow_led.blink(on_time=.1, off_time=.3)
 
 
 class SipoLED(gpiozero.DigitalOutputDevice):
@@ -95,11 +95,18 @@ class SipoLED(gpiozero.DigitalOutputDevice):
         self.pin_number = pin
         self.shift_register = shift_register
 
+    def _conflicts_with(self, other):
+        '''
+        Override the default from Device class, allows shift register pins
+        to overlap with Raspberry Pi pins
+        '''
+        return False
+
     def _write(self, val):
         if self._value_to_state(val):
-            self.shift_register.on(self.pin_number - 40)
+            self.shift_register.on(self.pin_number)
         else:
-            self.shift_register.off(self.pin_number - 40 )
+            self.shift_register.off(self.pin_number)
 
 class SipoStatus(GpioStatus):
     def __init__(self, shift_register, green_pin, yellow_pin):
@@ -232,14 +239,15 @@ if __name__ == "__main__":
     #        led5.off()
     #        led4.off()
     #    time.sleep(.2)
-    status = SipoStatus(register, 47, 46)
+    status = SipoStatus(register, 7, 6)
     black = gpiozero.Button(26)
     red = gpiozero.Button(10)
     #status.set_status('ringing')
-    status.set_status('hold')
-    #status.set_status('test')
-    #other_status = SipoStatus(register, 45, 44)
-    #other_status.set_status('test')
+    #status.set_status('hold')
+    status.set_status('test')
+    #status.set_status('connecting')
+    other_status = SipoStatus(register, 5, 4)
+    other_status.set_status('test')
     while True:
         #if black.is_pressed:
         #    #status.ringing()
