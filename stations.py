@@ -8,6 +8,28 @@ from gpiozero.pins.mock import MockFactory
 import time
 from shift_register import ShiftRegister
 
+class StationInterface()
+    def call_all():
+        pass
+
+    def hangup():
+        pass
+
+    def set_autoanswer(is_autoanswering):
+        pass
+
+    def incoming_call():
+        if self.is_autoanswering:
+            pass
+        else:
+            pass
+
+    def hangup():
+        pass
+
+    def hangup():
+        pass
+
 class StationStatus():
 
     status = None
